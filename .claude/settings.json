@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./scripts/setup.sh)",
+      "Bash(./scripts/dev.sh)",
+      "Bash(cargo *)",
+      "Bash(rustup *)",
+      "PowerShell(./scripts/setup.ps1)",
+      "PowerShell(./scripts/dev.ps1)",
+      "PowerShell(cargo *)",
+      "PowerShell(rustup *)"
+    ]
+  }
+}
