@@ -19,10 +19,11 @@ Take a screenshot (Win+Shift+S / Cmd+Shift+4 to clipboard), Ctrl+V into an agent
 
 - `src/main.rs` — entry, dispatches subcommands, `doctor`.
 - `src/cli.rs` — `clap` argument definitions.
-- `src/watcher.rs` — polling loop that detects image-only clipboards.
+- `src/watcher.rs` — polling loop that detects image-only clipboards, gated on focus.
+- `src/focus.rs` — foreground-window process-tree walk (Windows: user32 + sysinfo). Identifies agent CLIs (`claude`, `gemini`, `codex`, or `node` running them). Cached with a 2s TTL keyed on foreground PID.
 - `src/cache.rs` — write PNG to `~/.clipbridge/cache/`, purge files older than 7 days.
 - `src/inject.rs` — format the text payload that replaces the clipboard image.
-- `src/runner.rs` — `run -- <cmd>` wrapper: starts watcher, spawns child, stops watcher on exit.
+- `src/runner.rs` — `run -- <cmd>` wrapper: starts watcher (focus-aware), spawns child, stops watcher on exit.
 
 ## Taboos
 
@@ -30,3 +31,4 @@ Take a screenshot (Win+Shift+S / Cmd+Shift+4 to clipboard), Ctrl+V into an agent
 - No speculative abstractions.
 - Use `anyhow::Result` everywhere — this is a binary, not a library.
 - Don't read clipboard image when text is also present (web copies, etc.) — only act on image-only clipboards.
+- Default behavior must be safe: never convert when foreground isn't an agent CLI. The `--all-windows` flag is the only opt-out.

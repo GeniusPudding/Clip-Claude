@@ -14,7 +14,7 @@ pub fn run_wrapped(args: &[String]) -> Result<()> {
     let stop = Arc::new(AtomicBool::new(false));
     let stop_for_watcher = stop.clone();
     let watcher = thread::spawn(move || {
-        if let Err(e) = crate::watcher::run_loop(stop_for_watcher) {
+        if let Err(e) = crate::watcher::run_loop(stop_for_watcher, false) {
             eprintln!("clipbridge watcher: {e:#}");
         }
     });

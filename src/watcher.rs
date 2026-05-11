@@ -4,21 +4,29 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::focus::FocusCache;
+
 const POLL_MS: u64 = 150;
 
-pub fn run_foreground() -> Result<()> {
-    eprintln!("clipbridge watching (Ctrl+C to stop)");
-    let never_stop = Arc::new(AtomicBool::new(false));
-    run_loop(never_stop)
+pub fn run_foreground(all_windows: bool) -> Result<()> {
+    let mode = if all_windows { "all-windows" } else { "agent foreground only" };
+    eprintln!("clipbridge watching ({mode}) — Ctrl+C to stop");
+    let stop = Arc::new(AtomicBool::new(false));
+    run_loop(stop, all_windows)
 }
 
-pub fn run_loop(stop: Arc<AtomicBool>) -> Result<()> {
+pub fn run_loop(stop: Arc<AtomicBool>, all_windows: bool) -> Result<()> {
     let mut clipboard = Clipboard::new().context("init clipboard")?;
+    let mut focus_cache = FocusCache::new();
+
     while !stop.load(Ordering::SeqCst) {
         if !has_text(&mut clipboard) {
-            if let Ok(img) = clipboard.get_image() {
-                if let Err(e) = handle_image(&mut clipboard, img) {
-                    eprintln!("clipbridge: {e:#}");
+            let allowed = all_windows || crate::focus::is_agent_foreground(&mut focus_cache);
+            if allowed {
+                if let Ok(img) = clipboard.get_image() {
+                    if let Err(e) = handle_image(&mut clipboard, img) {
+                        eprintln!("clipbridge: {e:#}");
+                    }
                 }
             }
         }
