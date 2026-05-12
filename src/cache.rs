@@ -13,7 +13,7 @@ pub fn cache_dir() -> Result<PathBuf> {
     Ok(dir)
 }
 
-pub fn save_png(img: ImageData) -> Result<PathBuf> {
+pub fn save_png(img: &ImageData) -> Result<PathBuf> {
     let dir = cache_dir()?;
     let stamp = Local::now().format("%Y%m%d_%H%M%S_%3f");
     let path = dir.join(format!("clip_{stamp}.png"));
@@ -21,7 +21,7 @@ pub fn save_png(img: ImageData) -> Result<PathBuf> {
     let buffer = image::RgbaImage::from_raw(
         img.width as u32,
         img.height as u32,
-        img.bytes.into_owned(),
+        img.bytes.to_vec(),
     )
     .ok_or_else(|| anyhow!("clipboard image bytes don't match {}x{} RGBA", img.width, img.height))?;
 

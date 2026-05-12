@@ -16,10 +16,9 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 clap = { version = "4", features = ["derive"] }
 dirs = "5"
 image = { version = "0.25", default-features = false, features = ["png"] }
-sysinfo = { version = "0.32", default-features = false, features = ["system"] }
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+windows = { version = "0.59", features = ["Win32_Foundation", "Win32_System_DataExchange", "Win32_System_Memory"] }
 
 [profile.release]
 opt-level = 3

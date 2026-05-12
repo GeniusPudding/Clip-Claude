@@ -4,29 +4,22 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::focus::FocusCache;
-
 const POLL_MS: u64 = 150;
 
-pub fn run_foreground(all_windows: bool) -> Result<()> {
-    let mode = if all_windows { "all-windows" } else { "agent foreground only" };
-    eprintln!("clipbridge watching ({mode}) — Ctrl+C to stop");
+pub fn run_foreground() -> Result<()> {
+    eprintln!("clipbridge watching — Ctrl+C to stop");
     let stop = Arc::new(AtomicBool::new(false));
-    run_loop(stop, all_windows)
+    run_loop(stop)
 }
 
-pub fn run_loop(stop: Arc<AtomicBool>, all_windows: bool) -> Result<()> {
+pub fn run_loop(stop: Arc<AtomicBool>) -> Result<()> {
     let mut clipboard = Clipboard::new().context("init clipboard")?;
-    let mut focus_cache = FocusCache::new();
 
     while !stop.load(Ordering::SeqCst) {
         if !has_text(&mut clipboard) {
-            let allowed = all_windows || crate::focus::is_agent_foreground(&mut focus_cache);
-            if allowed {
-                if let Ok(img) = clipboard.get_image() {
-                    if let Err(e) = handle_image(&mut clipboard, img) {
-                        eprintln!("clipbridge: {e:#}");
-                    }
+            if let Ok(img) = clipboard.get_image() {
+                if let Err(e) = handle_image(img) {
+                    eprintln!("clipbridge: {e:#}");
                 }
             }
         }
@@ -39,12 +32,12 @@ fn has_text(clipboard: &mut Clipboard) -> bool {
     clipboard.get_text().is_ok()
 }
 
-fn handle_image(clipboard: &mut Clipboard, img: ImageData) -> Result<()> {
+fn handle_image(img: ImageData) -> Result<()> {
     let width = img.width as u32;
     let height = img.height as u32;
-    let path = crate::cache::save_png(img)?;
+    let path = crate::cache::save_png(&img)?;
     let payload = crate::inject::format_payload(&path, width, height);
-    clipboard.set_text(&payload).context("write text payload")?;
+    crate::clipboard_io::write_image_and_text(img, &payload)?;
     eprintln!("clipbridge: captured {width}x{height} -> {}", path.display());
     let _ = crate::cache::purge_old();
     Ok(())
