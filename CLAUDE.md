@@ -17,13 +17,16 @@ Take a screenshot (Win+Shift+S / Cmd+Shift+4 to clipboard), Ctrl+V into an agent
 
 ## Module layout
 
-- `src/main.rs` — entry, dispatches subcommands, `doctor`.
+- `src/lib.rs` — module declarations. Both `clipbridge.exe` (CLI) and `clipbridge-bg.exe` (windowless background) consume this lib.
+- `src/main.rs` — `clipbridge.exe` entry. Dispatches subcommands, runs `doctor`.
+- `src/bg.rs` — `clipbridge-bg.exe` entry. `#![windows_subsystem = "windows"]` so no console allocates. Just calls `watcher::run_foreground()`.
 - `src/cli.rs` — `clap` argument definitions.
 - `src/watcher.rs` — 150 ms polling loop. Skips when clipboard already has text; otherwise reads image, saves PNG, calls `clipboard_io::write_image_and_text`.
-- `src/clipboard_io.rs` — Win32 raw clipboard multi-format write. Builds a `BITMAPV5HEADER` DIB from RGBA bytes (with alpha mask + sRGB color space) and pairs it with a UTF-16 text payload. `OpenClipboard → EmptyClipboard → SetClipboardData(CF_DIBV5) → SetClipboardData(CF_UNICODETEXT) → CloseClipboard`. Non-Windows fallback is text-only via arboard.
+- `src/clipboard_io.rs` — Win32 raw clipboard multi-format write. Builds a CF_DIB whose bytes match `.NET Clipboard.SetImage` exactly (40-byte BITMAPINFOHEADER, BI_BITFIELDS, 32-bit, bottom-up, R/G/B masks, BGRA pixels). The system synthesizes CF_BITMAP and CF_DIBV5 from this. Pairs with a CF_UNICODETEXT payload. Non-Windows fallback is text-only via arboard.
 - `src/cache.rs` — write PNG to `~/.clipbridge/cache/`, purge files older than 7 days.
 - `src/inject.rs` — format the text payload.
 - `src/runner.rs` — `run -- <cmd>` wrapper: starts watcher, spawns child, stops watcher on exit.
+- `src/install.rs` — `install` / `uninstall` / `status` subcommands. Install copies binaries to `%LOCALAPPDATA%\clipbridge\`, registers `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Clipbridge` pointing at `clipbridge-bg.exe`, and spawns the daemon immediately. Uses `reg` rather than `schtasks` so no admin / sandboxed contexts work.
 
 ## Taboos
 

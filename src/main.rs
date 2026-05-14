@@ -1,12 +1,6 @@
-mod cache;
-mod cli;
-mod clipboard_io;
-mod inject;
-mod runner;
-mod watcher;
-
 use anyhow::Result;
 use clap::Parser;
+use clipbridge::{cache, cli, install, runner, watcher};
 
 fn main() -> Result<()> {
     let args = cli::Cli::parse();
@@ -14,6 +8,9 @@ fn main() -> Result<()> {
         None | Some(cli::Command::Start) => watcher::run_foreground(),
         Some(cli::Command::Run { args }) => runner::run_wrapped(&args),
         Some(cli::Command::Doctor) => doctor(),
+        Some(cli::Command::Install) => install::install(),
+        Some(cli::Command::Uninstall) => install::uninstall(),
+        Some(cli::Command::Status) => install::status(),
     }
 }
 

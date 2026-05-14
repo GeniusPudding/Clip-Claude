@@ -5,9 +5,17 @@ edition = "2021"
 description = "Clipboard image bridge — paste screenshots into terminal AI agents (Claude Code, Gemini CLI, Codex) as if they natively supported image paste."
 license = "MIT"
 
+[lib]
+name = "clipbridge"
+path = "src/lib.rs"
+
 [[bin]]
 name = "clipbridge"
 path = "src/main.rs"
+
+[[bin]]
+name = "clipbridge-bg"
+path = "src/bg.rs"
 
 [dependencies]
 anyhow = "1"

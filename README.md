@@ -5,7 +5,7 @@ Paste screenshots straight into terminal AI agents — Claude Code, Gemini CLI, 
 ```
                               ┌───────────────────────────────────────────┐
                               │  clipbridge augments the clipboard:       │
-[ screenshot in clipboard ] ─►│    keeps the image (CF_DIBV5)             │
+[ screenshot in clipboard ] ─►│    keeps the original image (CF_DIB)      │
                               │    adds a text path payload (CF_UNICODE)  │
                               └───────────────────────────────────────────┘
                                               │
@@ -17,7 +17,7 @@ Paste screenshots straight into terminal AI agents — Claude Code, Gemini CLI, 
        got touched.                                         sees the image multimodally.
 ```
 
-A tiny native Rust binary — no runtime, no Python, no Electron. Cross-platform code (Windows · macOS · Linux); Windows ships polished multi-format writing, other platforms fall back to text-only.
+A tiny native Rust binary — no runtime, no Python, no Electron. Cross-platform code (Windows · macOS · Linux); Windows ships the polished install + invisible background daemon, other platforms build but require manual setup.
 
 ## Why
 
@@ -27,127 +27,117 @@ Terminal AI agent CLIs don't accept binary clipboard paste — on Windows it usu
 
 clipbridge **does not destroy your image**. After capture, the clipboard carries both formats simultaneously:
 
-- `CF_DIBV5` — the original image (system also synthesizes `CF_DIB` and `CF_BITMAP`)
-- `CF_UNICODETEXT` — a self-describing 4-line text payload pointing at a saved PNG
+- `CF_DIB` — the original image, byte-for-byte matching what Snipping Tool / .NET `Clipboard.SetImage` produce (32-bit BI_BITFIELDS bottom-up). The system synthesizes `CF_BITMAP` and `CF_DIBV5` from this.
+- `CF_UNICODETEXT` — a self-describing 4-line text payload pointing at a saved PNG.
 
-Apps that paste images (Photoshop, Telegram, Discord, Word, browser inputs) take the image. Apps that only paste text (Claude Code, Gemini CLI, Codex, Notepad, VS Code) take the text payload. No app sees both; no app sees the wrong thing.
+Image-paste apps (Photoshop, Telegram, Discord, Word, browser inputs) take the image. Apps that only paste text (Claude Code, Gemini CLI, Codex, Notepad, VS Code) take the text payload. No app sees the wrong thing.
 
-## Quick Start
-
-### Windows
+## Quick Start (Windows — one line)
 
 ```powershell
 git clone https://github.com/<you>/clipbridge.git
 cd clipbridge
-./scripts/setup.ps1     # installs rustup if missing, builds release binary
+./scripts/install.ps1
 ```
+
+`install.ps1` installs `rustup` if missing, builds release binaries, copies them to `%LOCALAPPDATA%\clipbridge\`, registers an HKCU Run-key entry so the invisible background daemon launches at every login, and starts it immediately. After this, **every screenshot you take paste-works in every Windows app you care about** — agents, chat apps, image editors — for the rest of your computing life. Reboot survives.
+
+To verify:
+
+```powershell
+clipbridge status     # if you added %LOCALAPPDATA%\clipbridge to PATH, or:
+%LOCALAPPDATA%\clipbridge\clipbridge.exe status
+```
+
+Expected:
+```
+  ok    installed at C:\Users\you\AppData\Local\clipbridge
+  ok    auto-start registry entry present
+  ok    daemon running
+```
+
+To remove:
+
+```powershell
+%LOCALAPPDATA%\clipbridge\clipbridge.exe uninstall
+```
+
+Stops the daemon, removes the Run-key entry, leaves the binaries (delete the folder manually if you want them gone).
 
 ### macOS / Linux
 
 ```bash
 git clone https://github.com/<you>/clipbridge.git
 cd clipbridge
-./scripts/setup.sh
+./scripts/install.sh
 ```
 
-The compiled binary lands at `target/release/clipbridge` (or `clipbridge.exe`). Add `target/release/` to your PATH or copy the binary somewhere on PATH.
-
-## Usage
-
-### 1. Foreground daemon (default)
-
-```bash
-clipbridge          # equivalent to `clipbridge start`
-```
-
-Runs in the foreground until Ctrl+C. While running, every screenshot you take gets both the original image and a text path payload on the clipboard, simultaneously. Pasting in any app does the right thing for that app.
-
-Run it in a side terminal, open your agents elsewhere normally.
-
-### 2. Wrapper mode
-
-```bash
-clipbridge run -- claude
-clipbridge run -- gemini
-clipbridge run -- codex --model gpt-5
-```
-
-Starts the watcher, runs the wrapped command, stops the watcher when the wrapped command exits. The wrapped agent's stdio is passthrough — its UI is identical to running directly.
-
-**Tip — make the wrapper invisible:** add a shell function so `claude` automatically goes through clipbridge:
-
-```bash
-# ~/.zshrc or ~/.bashrc
-claude() { clipbridge run -- claude "$@" }
-```
-
-```powershell
-# PowerShell profile ($PROFILE)
-function claude { clipbridge run -- claude.cmd @args }
-```
-
-After this, `claude` works exactly as before — but every screenshot during the session is paste-able.
-
-### Verify environment
-
-```bash
-clipbridge doctor
-```
-
-Prints clipboard-access check + cache directory location.
+Builds the binary at `target/release/clipbridge`. Auto-start / windowless daemon are not yet wired for macOS / Linux — copy the binary onto your PATH and run `clipbridge` manually when you want it active. (See Roadmap.)
 
 ## Subcommands
 
 | Command                  | Description                                                              |
 |--------------------------|--------------------------------------------------------------------------|
-| `clipbridge`             | Alias for `clipbridge start`. Foreground watcher.                        |
+| `clipbridge install`     | Copy binaries to `%LOCALAPPDATA%\clipbridge\`, register auto-start, run. |
+| `clipbridge uninstall`   | Stop the daemon, remove auto-start. Leaves binaries.                     |
+| `clipbridge status`      | Report install + auto-start + running state.                             |
+| `clipbridge`             | Alias for `clipbridge start`. Foreground watcher (visible console).      |
 | `clipbridge start`       | Run the watcher in the foreground until Ctrl+C.                          |
 | `clipbridge run -- CMD`  | Wrap `CMD`. Watcher lives for the lifetime of `CMD`.                     |
 | `clipbridge doctor`      | Sanity-check clipboard access and cache dir.                             |
 | `clipbridge --version`   | Print version.                                                           |
 | `clipbridge --help`      | Print help.                                                              |
 
+`clipbridge-bg.exe` is the same watcher built with `windows_subsystem = "windows"` so it shows no console window. The install command points the Run-key entry at it.
+
 ## How it works
 
 1. Polls the system clipboard via `arboard` every 150 ms.
-2. Skips iterations where the clipboard contains text (nothing to do; either user copied text, or we already augmented this image).
+2. Skips iterations where the clipboard already contains text — either user copied text, or we already augmented this image.
 3. When the clipboard has an image **without** text — fresh screenshot — reads the RGBA buffer.
 4. Saves it as a PNG at `~/.clipbridge/cache/clip_<timestamp>.png`.
-5. Builds a `BITMAPV5HEADER` DIB from the RGBA bytes (with proper alpha mask + sRGB color space) and a 4-line UTF-16 text payload:
+5. Builds a CF_DIB byte-for-byte matching `.NET`'s reference output (40-byte `BITMAPINFOHEADER` · `biCompression = BI_BITFIELDS` · 32-bit · positive `biHeight` for bottom-up · R/G/B color masks · BGRA pixel data in reverse row order).
+6. Builds a 4-line UTF-16 text payload:
    ```
    [clipbridge] Pasted image (1920x1080)
-   File: C:\Users\you\.clipbridge\cache\clip_20260512_143022_815.png
+   File: C:\Users\you\.clipbridge\cache\clip_20260514_143022_815.png
    Please open and analyze this file using your image-reading tool.
    (This text was auto-injected because the terminal cannot display images directly.)
    ```
-6. Raw Win32: `OpenClipboard` → `EmptyClipboard` → `SetClipboardData(CF_DIBV5, ...)` → `SetClipboardData(CF_UNICODETEXT, ...)` → `CloseClipboard`. The system auto-synthesizes `CF_DIB` and `CF_BITMAP` from V5.
-7. When you Ctrl+V in an agent CLI, multi-line text auto-collapses (Claude Code shows `[Pasted text #1, +4 lines]`). On submit, the agent's Read tool opens the file path — modern multimodal LLMs see the image as image.
-8. When you Ctrl+V in Photoshop / Telegram / Discord / Word, those apps request `CF_DIB` or `CF_BITMAP`, the system serves the synthesized format, you get your image.
-9. Cache is purged of files older than 7 days on each new capture.
+7. Raw Win32: `OpenClipboard` → `EmptyClipboard` → `SetClipboardData(CF_DIB, ...)` → `SetClipboardData(CF_UNICODETEXT, ...)` → `CloseClipboard`. The system auto-synthesizes `CF_BITMAP` and `CF_DIBV5`.
+8. Pasting in an agent CLI picks up the text (auto-collapsed to `[Pasted text #1, +4 lines]` in Claude Code). On submit, the agent's Read tool opens the file path; the multimodal model sees the image.
+9. Pasting in Photoshop / Telegram / Discord / Word picks up the CF_DIB or synthesized CF_BITMAP, exactly as if Snipping Tool had been the source. Tested against the byte layout that `System.Windows.Forms.Clipboard.SetImage` emits — chat apps accept it.
+10. Cache is purged of files older than 7 days on each new capture.
 
-### Why image-only clipboards (no text)?
+### Coexists with other plugins
 
-If the clipboard already has text — web-page copy with HTML+text+image, manually copied text alongside an image, or our own previously-written augment — we skip. This prevents loops and avoids stomping on rich content.
+- **Voice input plugins (e.g. Kaikou / claude-voice-zh)**: the voice daemon writes transcribed text to the clipboard then sends Ctrl+V. clipbridge sees text-on-clipboard and stays out. They share the clipboard cleanly, in either order of operations.
+- **General clipboard managers**: clipbridge's CF_DIB write is identical to a normal screenshot, so clipboard history tools record it as just another screenshot — no surprises.
 
 ### Platform notes
 
-- **Windows**: full multi-format support via raw Win32 (`Win32_System_DataExchange` + `Win32_System_Memory`).
-- **macOS / Linux**: image+text multi-type write is not yet implemented; the fallback is text-only (image is replaced). macOS users running Claude Code typically don't need clipbridge anyway (Cmd+V is wired natively). For Gemini / Codex on those platforms, the text-only fallback still gets the path to the agent; you just lose the ability to also paste the image into an image app. Multi-type writes (NSPasteboard / wl-copy / xclip targets) are on the roadmap.
+- **Windows**: full install path, byte-matched CF_DIB, windowless background daemon, auto-start via HKCU Run key.
+- **macOS / Linux**: build works; image+text multi-type write and auto-start are TODO. The fallback for now is text-only (image is replaced), which is acceptable when Claude Code's native Cmd+V image paste already covers the mac case.
 
 ## Architecture
 
 ```
 src/
+├── lib.rs            # module declarations
 ├── main.rs           # entry, dispatches subcommands, doctor
+├── bg.rs             # `windows_subsystem = "windows"` entry — runs the watcher
 ├── cli.rs            # clap definitions
 ├── watcher.rs        # 150 ms polling loop, guards on text-presence
-├── clipboard_io.rs   # Win32 BITMAPV5HEADER builder + multi-format clipboard write
+├── clipboard_io.rs   # Win32 CF_DIB builder (byte-matches .NET) + multi-format write
 ├── cache.rs          # save PNG to ~/.clipbridge/cache/, purge >7d
 ├── inject.rs         # format the text payload
-└── runner.rs         # `run -- CMD` subprocess wrapper
+├── runner.rs         # `run -- CMD` subprocess wrapper
+└── install.rs        # install / uninstall / status (HKCU Run-key based)
 ```
 
-Polling at 150 ms: sub-second so the watcher feels instant; polling keeps clipboard hook code one tight loop and trivially portable to other platforms.
+`clipbridge.exe` and `clipbridge-bg.exe` share all modules through the `clipbridge` lib.
+
+Polling at 150 ms: sub-second so the watcher feels instant; polling keeps clipboard hook code one tight loop and trivially portable.
 
 ## Toolchain
 
@@ -156,7 +146,7 @@ See [docs/toolchain.md](docs/toolchain.md).
 ## Development
 
 ```bash
-./scripts/dev.sh -- start         # cargo run -- start (debug build)
+./scripts/dev.sh -- start         # cargo run --bin clipbridge -- start (debug build)
 ./scripts/dev.sh -- doctor
 cargo test
 cargo fmt && cargo clippy --all-targets -- -D warnings
@@ -164,14 +154,13 @@ cargo fmt && cargo clippy --all-targets -- -D warnings
 
 ## Roadmap
 
-- [x] **Multi-format clipboard** — image + text coexist, every app paste does the right thing without focus detection.
-- [ ] `clipbridge install` — auto-write a shell function/alias to `$PROFILE` / `.zshrc` / `.bashrc` so wrapped agents are invisible to set up.
-- [ ] Hidden background daemon (no console window) + Task Scheduler entry → "always on" with no visible process.
+- [x] **Multi-format clipboard** — image + text coexist, every app paste does the right thing.
+- [x] **Byte-match .NET CF_DIB** — confirmed compatible with LINE / Telegram / Discord / Photoshop / browser paste targets.
+- [x] **Windows install command** — one-line install, invisible background daemon, auto-start at login.
+- [ ] Prebuilt binaries on GitHub Releases + `irm https://.../install.ps1 | iex` for users without Rust.
 - [ ] `clipbridge restore` — re-emit the most recent cached PNG onto the clipboard (image-only) on demand.
-- [ ] macOS NSPasteboard multi-type write (image + text simultaneously).
-- [ ] Linux X11 / Wayland multi-target clipboard write.
-- [ ] GitHub Actions release matrix → prebuilt binaries for win-x64 / mac-arm64 / mac-x64 / linux-x64.
-- [ ] One-line install script (`irm .../install.ps1 | iex` / `curl ... | sh`).
+- [ ] macOS install: NSPasteboard multi-type write + `launchctl` LaunchAgent.
+- [ ] Linux install: X11 / Wayland multi-target clipboard write + systemd user unit.
 
 ## License
 
