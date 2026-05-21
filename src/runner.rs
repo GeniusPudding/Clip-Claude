@@ -7,7 +7,7 @@ use std::thread;
 pub fn run_wrapped(args: &[String]) -> Result<()> {
     if args.is_empty() {
         return Err(anyhow!(
-            "clipbridge run requires a command, e.g. `clipbridge run -- claude`"
+            "clip-claude run requires a command, e.g. `clip-claude run -- claude`"
         ));
     }
 
@@ -15,7 +15,7 @@ pub fn run_wrapped(args: &[String]) -> Result<()> {
     let stop_for_watcher = stop.clone();
     let watcher = thread::spawn(move || {
         if let Err(e) = crate::watcher::run_loop(stop_for_watcher) {
-            eprintln!("clipbridge watcher: {e:#}");
+            eprintln!("clip-claude watcher: {e:#}");
         }
     });
 

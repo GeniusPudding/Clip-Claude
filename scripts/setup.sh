@@ -11,5 +11,6 @@ fi
 cargo build --release
 echo
 echo "Setup complete."
-echo "Binary: target/release/clipbridge"
+echo "Binary: target/release/clip-claude"
 echo "Quick test: ./scripts/dev.sh doctor"
+echo "Auto-install: ./install.sh"

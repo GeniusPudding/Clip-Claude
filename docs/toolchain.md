@@ -22,22 +22,10 @@ Per-platform system libraries the binary links against (already present on every
 
 ## Pipeline
 
-1. **Setup** (`scripts/setup.{ps1,sh}`): installs rustup if missing, runs `cargo build --release`.
-2. **Dev** (`scripts/dev.{ps1,sh}`): `cargo run --` with passthrough args (debug build).
-3. **Build release**: `cargo build --release`. Output at `target/release/clipbridge{.exe}`.
-4. **Test**: `cargo test`.
-5. **Lint**: `cargo clippy --all-targets -- -D warnings`.
-6. **Format**: `cargo fmt`.
-
-## Cross-platform release builds
-
-For shipping prebuilt binaries via GitHub Releases, use a CI matrix:
-
-| Runner            | Target triple                    | Output extension |
-|-------------------|----------------------------------|------------------|
-| `windows-latest`  | `x86_64-pc-windows-msvc`         | `.exe`           |
-| `macos-latest`    | `aarch64-apple-darwin`           | (none)           |
-| `macos-13`        | `x86_64-apple-darwin`            | (none)           |
-| `ubuntu-latest`   | `x86_64-unknown-linux-gnu`       | (none)           |
-
-(`.github/workflows/release.yml` is not yet committed — add when the first tagged release is cut.)
+1. **Install** (`scripts/install.{ps1,sh}`): one-line wrapper. Installs rustup if missing, builds release, then (Windows) runs `clip-claude install` to drop binaries into `%LOCALAPPDATA%\Clip-Claude\` + register HKCU Run-key + start daemon.
+2. **Setup** (`scripts/setup.{ps1,sh}`): installs rustup if missing, runs `cargo build --release`. Stops there — no auto-install.
+3. **Dev** (`scripts/dev.{ps1,sh}`): `cargo run --bin clip-claude --` with passthrough args (debug build).
+4. **Build release**: `cargo build --release`. Output at `target/release/clip-claude{.exe}` and `clip-claude-bg{.exe}`.
+5. **Test**: `cargo test`.
+6. **Lint**: `cargo clippy --all-targets -- -D warnings`.
+7. **Format**: `cargo fmt`.

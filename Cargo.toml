@@ -1,20 +1,20 @@
 [package]
-name = "clipbridge"
+name = "clip-claude"
 version = "0.1.0"
 edition = "2021"
-description = "Clipboard image bridge — paste screenshots into terminal AI agents (Claude Code, Gemini CLI, Codex) as if they natively supported image paste."
+description = "Clip-Claude (即貼即克) — paste screenshots into terminal AI agents (Claude Code, Gemini CLI, Codex) as if they natively supported image paste."
 license = "MIT"
 
 [lib]
-name = "clipbridge"
+name = "clip_claude"
 path = "src/lib.rs"
 
 [[bin]]
-name = "clipbridge"
+name = "clip-claude"
 path = "src/main.rs"
 
 [[bin]]
-name = "clipbridge-bg"
+name = "clip-claude-bg"
 path = "src/bg.rs"
 
 [dependencies]

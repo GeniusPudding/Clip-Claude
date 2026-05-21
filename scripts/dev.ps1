@@ -1,3 +1,3 @@
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
-cargo run -- @args
+cargo run --bin clip-claude -- @args

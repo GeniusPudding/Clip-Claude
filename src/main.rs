@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use clipbridge::{cache, cli, install, runner, watcher};
+use clip_claude::{cache, cli, install, runner, watcher};
 
 fn main() -> Result<()> {
     let args = cli::Cli::parse();
@@ -15,7 +15,7 @@ fn main() -> Result<()> {
 }
 
 fn doctor() -> Result<()> {
-    println!("clipbridge {}", env!("CARGO_PKG_VERSION"));
+    println!("Clip-Claude {}", env!("CARGO_PKG_VERSION"));
     let _ = arboard::Clipboard::new()?;
     println!("  ok  clipboard accessible");
     let dir = cache::cache_dir()?;

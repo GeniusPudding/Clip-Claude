@@ -12,5 +12,6 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
 cargo build --release
 Write-Host ""
 Write-Host "Setup complete."
-Write-Host "Binary: target/release/clipbridge.exe"
+Write-Host "Binary: target/release/clip-claude.exe"
 Write-Host "Quick test: ./scripts/dev.ps1 doctor"
+Write-Host "Auto-install: ./install.ps1"

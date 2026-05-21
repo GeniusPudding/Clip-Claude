@@ -1,5 +1,5 @@
 #![windows_subsystem = "windows"]
 
 fn main() {
-    let _ = clipbridge::watcher::run_foreground();
+    let _ = clip_claude::watcher::run_foreground();
 }

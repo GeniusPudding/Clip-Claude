@@ -7,7 +7,7 @@ use std::time::Duration;
 const POLL_MS: u64 = 150;
 
 pub fn run_foreground() -> Result<()> {
-    eprintln!("clipbridge watching — Ctrl+C to stop");
+    eprintln!("clip-claude watching — Ctrl+C to stop");
     let stop = Arc::new(AtomicBool::new(false));
     run_loop(stop)
 }
@@ -19,7 +19,7 @@ pub fn run_loop(stop: Arc<AtomicBool>) -> Result<()> {
         if !has_text(&mut clipboard) {
             if let Ok(img) = clipboard.get_image() {
                 if let Err(e) = handle_image(img) {
-                    eprintln!("clipbridge: {e:#}");
+                    eprintln!("clip-claude: {e:#}");
                 }
             }
         }
@@ -38,7 +38,7 @@ fn handle_image(img: ImageData) -> Result<()> {
     let path = crate::cache::save_png(&img)?;
     let payload = crate::inject::format_payload(&path, width, height);
     crate::clipboard_io::write_image_and_text(img, &payload)?;
-    eprintln!("clipbridge: captured {width}x{height} -> {}", path.display());
+    eprintln!("clip-claude: captured {width}x{height} -> {}", path.display());
     let _ = crate::cache::purge_old();
     Ok(())
 }

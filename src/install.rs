@@ -3,12 +3,12 @@ use std::path::PathBuf;
 use std::process::Command;
 
 const RUN_KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
-const RUN_VALUE: &str = "Clipbridge";
+const RUN_VALUE: &str = "Clip-Claude";
 
 pub fn install_dir() -> Result<PathBuf> {
     let local_app_data = std::env::var_os("LOCALAPPDATA")
         .context("LOCALAPPDATA env var not set (Windows only)")?;
-    let dir = PathBuf::from(local_app_data).join("clipbridge");
+    let dir = PathBuf::from(local_app_data).join("Clip-Claude");
     std::fs::create_dir_all(&dir).context("create install dir")?;
     Ok(dir)
 }
@@ -16,29 +16,29 @@ pub fn install_dir() -> Result<PathBuf> {
 pub fn install() -> Result<()> {
     let current = std::env::current_exe().context("locate current exe")?;
     let src_dir = current.parent().context("locate current exe dir")?;
-    let src_cli = src_dir.join("clipbridge.exe");
-    let src_bg = src_dir.join("clipbridge-bg.exe");
+    let src_cli = src_dir.join("clip-claude.exe");
+    let src_bg = src_dir.join("clip-claude-bg.exe");
 
     if !src_cli.exists() {
-        return Err(anyhow!("can't find clipbridge.exe at {}", src_cli.display()));
+        return Err(anyhow!("can't find clip-claude.exe at {}", src_cli.display()));
     }
     if !src_bg.exists() {
         return Err(anyhow!(
-            "can't find clipbridge-bg.exe at {} — rebuild with `cargo build --release`",
+            "can't find clip-claude-bg.exe at {} — rebuild with `cargo build --release`",
             src_bg.display()
         ));
     }
 
     let dest_dir = install_dir()?;
-    let dest_cli = dest_dir.join("clipbridge.exe");
-    let dest_bg = dest_dir.join("clipbridge-bg.exe");
+    let dest_cli = dest_dir.join("clip-claude.exe");
+    let dest_bg = dest_dir.join("clip-claude-bg.exe");
 
     let _ = Command::new("taskkill")
-        .args(["/F", "/IM", "clipbridge-bg.exe"])
+        .args(["/F", "/IM", "clip-claude-bg.exe"])
         .status();
 
-    std::fs::copy(&src_cli, &dest_cli).context("copy clipbridge.exe")?;
-    std::fs::copy(&src_bg, &dest_bg).context("copy clipbridge-bg.exe")?;
+    std::fs::copy(&src_cli, &dest_cli).context("copy clip-claude.exe")?;
+    std::fs::copy(&src_bg, &dest_bg).context("copy clip-claude-bg.exe")?;
     println!("  ok  copied binaries to {}", dest_dir.display());
 
     let dest_bg_str = dest_bg
@@ -62,13 +62,13 @@ pub fn install() -> Result<()> {
 
     println!();
     println!("Done. Screenshots paste correctly everywhere from this moment on,");
-    println!("and clipbridge will auto-start on every login.");
+    println!("and clip-claude will auto-start on every login.");
     Ok(())
 }
 
 pub fn uninstall() -> Result<()> {
     let _ = Command::new("taskkill")
-        .args(["/F", "/IM", "clipbridge-bg.exe"])
+        .args(["/F", "/IM", "clip-claude-bg.exe"])
         .status();
     println!("  ok  stopped running daemon (if any)");
 
@@ -91,14 +91,14 @@ pub fn uninstall() -> Result<()> {
 
 pub fn status() -> Result<()> {
     let dir = install_dir()?;
-    let cli = dir.join("clipbridge.exe");
-    let bg = dir.join("clipbridge-bg.exe");
+    let cli = dir.join("clip-claude.exe");
+    let bg = dir.join("clip-claude-bg.exe");
 
     if cli.exists() && bg.exists() {
         println!("  ok    installed at {}", dir.display());
     } else {
         println!("  info  not installed (no binaries at {})", dir.display());
-        println!("        run `clipbridge install` to set up");
+        println!("        run `clip-claude install` to set up");
         return Ok(());
     }
 
@@ -113,11 +113,11 @@ pub fn status() -> Result<()> {
     }
 
     let tasklist = Command::new("tasklist")
-        .args(["/FI", "IMAGENAME eq clipbridge-bg.exe", "/NH"])
+        .args(["/FI", "IMAGENAME eq clip-claude-bg.exe", "/NH"])
         .output()
         .context("run tasklist")?;
     let out = String::from_utf8_lossy(&tasklist.stdout);
-    if out.contains("clipbridge-bg.exe") {
+    if out.contains("clip-claude-bg.exe") {
         println!("  ok    daemon running");
     } else {
         println!("  warn  daemon NOT running (will start on next login)");

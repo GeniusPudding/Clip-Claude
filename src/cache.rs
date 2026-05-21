@@ -8,7 +8,7 @@ const PURGE_AFTER_DAYS: u64 = 7;
 
 pub fn cache_dir() -> Result<PathBuf> {
     let home = dirs::home_dir().context("locate home directory")?;
-    let dir = home.join(".clipbridge").join("cache");
+    let dir = home.join(".clip-claude").join("cache");
     std::fs::create_dir_all(&dir).with_context(|| format!("create cache dir {}", dir.display()))?;
     Ok(dir)
 }
