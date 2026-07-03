@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Build Clip-Claude. macOS / Linux: auto-start hook not wired in this release —
-# the binary is built but you must add it to your PATH and launch manually.
+# Build Clip-Claude, install binary, register LaunchAgent (macOS), start daemon.
+# Safe to re-run — idempotent.
 
 set -euo pipefail
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,12 +18,20 @@ fi
 
 cargo build --release
 
-echo
-echo '=== Done ==='
-echo "Binary: $repo_dir/target/release/clip-claude"
-echo
-echo 'macOS / Linux: auto-start on login is not wired in this release.'
-echo '  - Multi-format clipboard write (image + text coexist) is Windows-only for now.'
-echo '  - On macOS, Claude Code already supports native Cmd+V image paste, so this is moot for the Claude case.'
-echo '  - For Gemini / Codex on macOS / Linux, run `target/release/clip-claude start` manually'
-echo '    (text-only fallback — image will be replaced by the path text on paste).'
+case "$(uname -s)" in
+    Darwin)
+        ./target/release/clip-claude install
+        echo
+        echo '=== Done ==='
+        echo 'Take a screenshot (Cmd+Shift+4), then Cmd+V into any agent CLI.'
+        echo 'Verify:   "$HOME/Library/Application Support/Clip-Claude/clip-claude" status'
+        echo 'Uninstall: ./uninstall.sh'
+        ;;
+    *)
+        echo
+        echo '=== Done ==='
+        echo "Binary: $repo_dir/target/release/clip-claude"
+        echo 'Linux / BSD: auto-start not wired in this release.'
+        echo 'Run target/release/clip-claude start manually.'
+        ;;
+esac

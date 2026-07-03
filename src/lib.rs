@@ -1,7 +1,10 @@
 pub mod cache;
 pub mod cli;
 pub mod clipboard_io;
+pub mod focus;
 pub mod inject;
 pub mod install;
+pub mod remote;
 pub mod runner;
+pub mod ssh_session;
 pub mod watcher;
